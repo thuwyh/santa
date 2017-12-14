@@ -1,0 +1,3 @@
+/home/yuanhao/CLionProjects/santa_gift/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/yuanhao/CLionProjects/santa_gift/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/yuanhao/CLionProjects/santa_gift/cmake-build-debug/CMakeFiles/santa_gift.dir

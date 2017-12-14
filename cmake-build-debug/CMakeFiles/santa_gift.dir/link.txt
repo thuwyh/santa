@@ -1,0 +1,1 @@
+/usr/bin/c++  -g   CMakeFiles/santa_gift.dir/main.cpp.o  -o santa_gift 
