@@ -117,10 +117,11 @@ short get_score(int c, int g) {
     return score;
 }
 
-int optimization(){
+bool optimization(){
     random_device rd;
     int cid2, gid2;
     short t1, t2;
+    bool flag = false;
     for (int c = 0; c<4000; c+=2){
         int gid1 = answ[c];
         for (int j = 0; j<1000; ++j){
@@ -137,14 +138,16 @@ int optimization(){
                 answ[c+1]=gid2;
                 answ[cid2]=gid1;
                 answ[cid2+1]=gid1;
+                flag = true;
                 break;
             }
         }
     }
+    int j;
     for (int c = 4000; c<CHILD_NUM; ++c){
         int cid1 = c;
         int gid1 = answ[cid1];
-        for (int j = 0; j<1000; ++j){
+        for (j = 0; j<1000; ++j){
             cid2 = gift[gid1][j];
             if (cid2==cid1 || cid2<4000)
                 continue;
@@ -154,11 +157,28 @@ int optimization(){
             if (t2>t1){
                 answ[cid1]=gid2;
                 answ[cid2]=gid1;
+                flag = true;
                 break;
             }
         }
+        if (j==1000){
+            for (j=0;j<100;++j){
+                cid2 = (rd() % 996000)+4000;
+                if (cid2==cid1 || cid2<4000 || cid2>=1000000)
+                    continue;
+                gid2 = answ[cid2];
+                t1 = temp[cid1][gid1] + temp[cid2][gid2];
+                t2 = temp[cid1][gid2] + temp[cid2][gid1];
+                if (t2>t1){
+                    answ[cid1]=gid2;
+                    answ[cid2]=gid1;
+                    flag = true;
+                    break;
+                }
+            }
+        }
     }
-    return 0;
+    return flag;
 }
 
 int optimization2(){
@@ -363,15 +383,17 @@ int main() {
             cout<<"w1:"<<w_child<<" w2:"<<w_gift<<" happiness:"<<ans<<endl;
         }
 
-    for (int i=0; i<1; ++i) {
-        optimization2();
+    for (int i=0; i<1000; ++i) {
+        bool f = optimization();
         float ans = avg_normalized_happiness(answ);
         cout << " happiness:" << ans << endl;
+        if (!f)
+            break;
     }
-//    ofstream file3("ans.csv");
-//    file3 << 'ChildId,GiftId\n';
-//    for (int i=0; i<CHILD_NUM; ++i)
-//        file3 << i << ',' << answ[i] << '\n';
-//    file3.close();
+    ofstream file3("ans.csv");
+    file3 << "ChildId,GiftId\n";
+    for (int i=0; i<CHILD_NUM; ++i)
+        file3 << i << ',' << answ[i] << '\n';
+    file3.close();
     return 0;
 }
