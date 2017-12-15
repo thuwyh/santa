@@ -15,6 +15,8 @@ int gift[GIFT_NUM][1000];
 int answ[CHILD_NUM];
 int gift_count[GIFT_NUM];
 short temp[1000000][1000];
+int pop_children[CHILD_NUM];
+int pop_gift[GIFT_NUM];
 
 typedef struct {
     int c;
@@ -43,6 +45,7 @@ float avg_normalized_happiness(int *pred) {
     float max_child_happiness = n_gift_pref * ratio_child_happiness;
     float max_gift_happiness = n_child_pref * ratio_gift_happiness;
     float total_child_happiness = 0;
+    float total_happiness = 0;
     float total_gift_happiness = 0;
 
     for (int c = 0; c < CHILD_NUM; ++c) {
@@ -65,13 +68,17 @@ float avg_normalized_happiness(int *pred) {
             total_gift_happiness += (1000 - idx) * ratio_gift_happiness;
         else
             total_gift_happiness += -1;
+        total_happiness += temp[c][g];
     }
     float normalized_child_happiness = total_child_happiness / CHILD_NUM / max_child_happiness;
     float normalized_gift_happiness = total_gift_happiness / GIFT_NUM / 1000 / max_gift_happiness;
     cout << "Normalized child happiness: " << normalized_child_happiness << endl;
     cout << "Normalized santa happiness: " << normalized_gift_happiness << endl;
     cout << "total happiness: " << normalized_child_happiness + normalized_gift_happiness << endl;
+    float normalized_happiness = total_happiness / 2000000.0/1000;
+    cout << "Normalized happiness: " << normalized_happiness << endl;
     return normalized_child_happiness + normalized_gift_happiness;
+//    return normalized_child_happiness;
 }
 
 short get_score(int c, int g) {
@@ -127,28 +134,39 @@ int main() {
 
     for (int c = 0; c < CHILD_NUM; ++c)
         for (int g = 0; g < GIFT_NUM; ++g)
-            temp[c][g] = -2000;
+            temp[c][g] = -101;
+
+    // initialize popularity
+    for (int c = 0; c < CHILD_NUM; ++c)
+        pop_children[c] = 0;
+
+    for (int g = 0; g < GIFT_NUM; ++g)
+        pop_gift[g] = 0;
 
     // are the coeficients 1 for children and 10 for santa correct?
     // children: (10-idx)/10/1M
     // santa: (1000-idx)/1000/1M
     // update children's happiness
     for (int c = 0; c < CHILD_NUM; ++c)
-        for (int k = 0; k < 10; ++k)
-            temp[c][wish[c][k]] = 100 * (10 - k);
+        for (int k = 0; k < 10; ++k) {
+            temp[c][wish[c][k]] = 200 * (10 - k)-1;
+            pop_gift[wish[c][k]] += 200 * (10 - k);
+        }
 
     // update santa's happiness
     for (int g = 0; g < GIFT_NUM; ++g)
         for (int k = 0; k < 1000; ++k) {
-            if (temp[gift[g][k]][g] == -2000)
-                temp[gift[g][k]][g] = 1000 - k;
+            if (temp[gift[g][k]][g] == -101)
+                temp[gift[g][k]][g] = 2*(1000 - k)-100;
             else
-                temp[gift[g][k]][g] += 1000 - k;
+                temp[gift[g][k]][g] += 2*(1000 - k)+1;
+            pop_children[gift[g][k]] += 2*(1000 - k);
         }
 
 
     printf("twins\n");
     // find the best gift for twins
+    long sum = 0;
     for (int i = 0; i < 4000; i += 2) {
         int max_happiness = -20000;
         int final_g = 0;
@@ -162,12 +180,14 @@ int main() {
         answ[i] = final_g;
         answ[i + 1] = final_g;
         gift_count[final_g] += 2;
+        sum += temp[i][final_g] + temp[i+1][final_g];
     }
+    cout<<"twins' happiness: "<< sum/2000000.0/1000;
 
     // insert non-twin edge into a vector
     for (int c = 4000; c < CHILD_NUM; ++c)
         for (int g = 0; g < GIFT_NUM; ++g)
-            if (temp[c][g] > -2000) {
+            if (temp[c][g] > -101) {
                 edge d;
                 d.c = c;
                 d.g = g;
@@ -179,24 +199,22 @@ int main() {
     std::sort(data.begin(), data.end(), compare);
 
     printf("pass 1\n");
-//    for(int k=0;k<10;++k){
-//        for(int c=4000;c<CHILD_NUM;++c){
-//            g = wish[c][k];
-//            if (gift_count[g]<1000 && answ[c]==-1){
-//                answ[c] = g;
-//                gift_count[g] += 1;
-//            }
-//        }
-//    }
+
     long picked = 0;
+    sum = 0;
+    long sum1 = 0;
     for (unsigned long t = 0; t < data.size(); ++t) {
         if (answ[data[t].c] == -1 && gift_count[data[t].g] < 1000) {
             answ[data[t].c] = data[t].g;
             gift_count[data[t].g] += 1;
             picked += 1;
+            sum1 += data[t].score;
         }
+        sum += data[t].score;
     }
     cout << "picked edge: " << picked << endl;
+    cout << "TOTAL happiness: " << sum/2000.0/1000000<<endl;
+    cout << "total picked happiness: " << sum1/2000.0/1000000<<endl;
 
     printf("pass 2\n");
     for (int c = 4000; c < CHILD_NUM; ++c) {
