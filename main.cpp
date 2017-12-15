@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include <math.h>
+#include <random>
 
 #define CHILD_NUM 1000000
 #define GIFT_NUM 1000
@@ -18,6 +19,7 @@ int gift_count[GIFT_NUM];
 short temp[1000000][1000];
 int pop_children[CHILD_NUM];
 int pop_gift[GIFT_NUM];
+int gift_child[1000][1001];
 
 typedef struct {
     int c;
@@ -115,6 +117,79 @@ short get_score(int c, int g) {
     return score;
 }
 
+int optimization(){
+    random_device rd;
+    int cid2, gid2;
+    short t1, t2;
+    for (int c = 0; c<4000; c+=2){
+        int gid1 = answ[c];
+        for (int j = 0; j<1000; ++j){
+            cid2 = gift[gid1][j];
+            if (cid2==j || cid2>=4000)
+                continue;
+            if (cid2 & 1)
+                cid2--;
+            gid2 = answ[cid2];
+            t1 = temp[c][gid1] + temp[c+1][gid1] + temp[cid2][gid2] + temp[cid2+1][gid2];
+            t2 = temp[c][gid2] + temp[c+1][gid2] + temp[cid2][gid1] + temp[cid2+1][gid1];
+            if (t2>t1){
+                answ[c]=gid2;
+                answ[c+1]=gid2;
+                answ[cid2]=gid1;
+                answ[cid2+1]=gid1;
+                break;
+            }
+        }
+    }
+    for (int c = 4000; c<CHILD_NUM; ++c){
+        int cid1 = c;
+        int gid1 = answ[cid1];
+        for (int j = 0; j<1000; ++j){
+            cid2 = gift[gid1][j];
+            if (cid2==cid1 || cid2<4000)
+                continue;
+            gid2 = answ[cid2];
+            t1 = temp[cid1][gid1] + temp[cid2][gid2];
+            t2 = temp[cid1][gid2] + temp[cid2][gid1];
+            if (t2>t1){
+                answ[cid1]=gid2;
+                answ[cid2]=gid1;
+                break;
+            }
+        }
+    }
+    return 0;
+}
+
+int optimization2(){
+//    random_device rd;
+    int cid2, gid2;
+    short t1, t2;
+
+    for (int c = 4000; c<CHILD_NUM; ++c){
+        int cid1 = c;
+        int gid1 = answ[cid1];
+        for (int j=0; j<10; ++j){
+            gid2 = wish[c][j];
+            for (int k=0; k<1000; ++k){
+                cid2 = gift_child[gid2][k+1];
+                if (cid2==cid1 || cid2 < 4000)
+                    continue;
+                gid2 = answ[cid2];
+                t1 = temp[cid1][gid1] + temp[cid2][gid2];
+                t2 = temp[cid1][gid2] + temp[cid2][gid1];
+                if (t2>t1){
+                    answ[cid1]=gid2;
+                    answ[cid2]=gid1;
+                    break;
+                }
+            }
+        }
+
+    }
+    return 0;
+}
+
 int main() {
     cout << "Hello, World!" << endl;
     ifstream file("child_wishlist.csv");
@@ -155,8 +230,10 @@ int main() {
     for (int c = 0; c < CHILD_NUM; ++c)
         pop_children[c] = 0;
 
-    for (int g = 0; g < GIFT_NUM; ++g)
+    for (int g = 0; g < GIFT_NUM; ++g) {
         pop_gift[g] = 0;
+        gift_child[g][0] = 0;
+    }
 
     // are the coefficients 1 for children and 10 for santa correct?
     // children: (10-idx)/10/1M
@@ -206,6 +283,8 @@ int main() {
         answ[i] = final_g;
         answ[i + 1] = final_g;
         gift_count[final_g] += 2;
+        gift_child[final_g][++gift_child[final_g][0]]=i;
+        gift_child[final_g][++gift_child[final_g][0]]=i+1;
         sum += temp[i][final_g] + temp[i+1][final_g];
     }
 //    cout<<"twins' happiness: "<< sum/2000000.0/1000;
@@ -214,10 +293,10 @@ int main() {
 
     // initialization
     float max_happiness = 0;
-    for (int w1=0; w1<10; ++w1)
-        for (int w2=0; w2<10; ++w2){
+    for (int w1=0; w1<1; ++w1)
+        for (int w2=0; w2<1; ++w2){
             double w_child = 1000 + 100 * w1;
-            double w_gift = 4000 + 100 * w2;
+            double w_gift = 4600 + 100 * w2;
             double w_child_2 = 1.5;
             double w_gift_2 = 1.7;
             for (int c = 4000; c< CHILD_NUM; ++c){
@@ -232,12 +311,12 @@ int main() {
                         edge d;
                         d.c = c;
                         d.g = g;
-                        if (pop_children[c] > 0)
+//                        if (pop_children[c] > 0)
                             d.score = temp[c][g] + (short)(w_child*-pow(pop_children[c]/11772, w_child_2)) +
                                                    (short)(w_gift*-pow(log(pop_gift[g]+1) / 16.9, w_gift_2));
-                        else
-                            d.score = temp[c][g] + (short)(w_child*-1) +
-                                      (short)(w_gift*-pow(log(pop_gift[g]+1) / 16.9, w_gift_2));
+//                        else
+//                            d.score = temp[c][g] + (short)(w_child*-1) +
+//                                      (short)(w_gift*-pow(log(pop_gift[g]+1) / 16.9, w_gift_2));
                         data.push_back(d);
                     }
 //            cout << data.size() << endl;
@@ -270,6 +349,7 @@ int main() {
                         ++idx;
                     answ[c] = idx;
                     gift_count[idx] += 1;
+                    gift_child[idx][++gift_child[idx][0]]=c;
                 }
             }
             for (int g = 0; g < GIFT_NUM; ++g)
@@ -283,5 +363,15 @@ int main() {
             cout<<"w1:"<<w_child<<" w2:"<<w_gift<<" happiness:"<<ans<<endl;
         }
 
+    for (int i=0; i<1; ++i) {
+        optimization2();
+        float ans = avg_normalized_happiness(answ);
+        cout << " happiness:" << ans << endl;
+    }
+//    ofstream file3("ans.csv");
+//    file3 << 'ChildId,GiftId\n';
+//    for (int i=0; i<CHILD_NUM; ++i)
+//        file3 << i << ',' << answ[i] << '\n';
+//    file3.close();
     return 0;
 }
